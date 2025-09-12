@@ -3,7 +3,8 @@ install.packages("readr")
 install.packages("ggplot2")
 library("readr")
 library(randomForest)
-library(ggplot2)
+
+library(ggplot2)library(ggplot2)library(ggplot2)
 
 #-------------------------------------------------------------------------------------------------------------------
 file1_path <- "/Users/brandoniorfida-costanzo/Desktop/University/INF30036 - Business Analytics/Assignment 2/bank/bank-full.csv"

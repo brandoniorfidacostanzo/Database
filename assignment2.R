@@ -3,13 +3,11 @@ install.packages("readr")
 install.packages("ggplot2")
 library("readr")
 library(randomForest)
+library(ggplot2)
 
-testing ttttt
-
-library(ggplot2)library(ggplot2)library(ggplot2)hhhhhhhhhhh
-
+#Klay Section
 #-------------------------------------------------------------------------------------------------------------------
-file1_path <- "/Users/brandoniorfida-costanzo/Desktop/University/INF30036 - Business Analytics/Assignment 2/bank/bank-full.csv"
+file1_path <- "/Users/brandoniorfida-costanzo/Desktop/University/INF30036 - Business Analytics/Assignment 2/bank/bank-full.csv" #filePathKlay 
 bankfull1 <- read_delim(
   file1_path,
   delim = ";",    # Tell it the delimiter is a semicolon
@@ -18,12 +16,20 @@ bankfull1 <- read_delim(
 )
 
 
-bankfull1 <- read.csv2("/Users/brandoniorfida-costanzo/Desktop/University/INF30036 - Business Analytics/Assignment 2/bank/bank-full.csv")
+#bankfull1 <- read.csv2("/Users/brandoniorfida-costanzo/Desktop/University/INF30036 - Business Analytics/Assignment 2/bank/bank-full.csv")
 bankfull2 <- read.csv2("/Users/brandoniorfida-costanzo/Desktop/University/INF30036 - Business Analytics/Assignment 2/bank-additional/bank-additional-full.csv")
 #colnames(bankfull2) <- colnames(bankfull1)
 
 bank_data <- rbind(bankfull1, bankfull2)
 
+
+
+
+
+
+
+
+#Brandon
 #-----------------------------------------------------------------------------------------------------------------------
 
 # Create a histogram to see the distribution

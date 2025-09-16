@@ -98,3 +98,83 @@ plot(employees$years_experience, employees$salary,
 # Calculate correlation
 correlation <- cor(employees$years_experience, employees$salary)
 cat("Correlation between experience and salary:", correlation)
+
+#Klay
+#-----------------------------------------------------------------------------------------------------------------------
+# Assuming levels like: unknown < primary < secondary < tertiary
+bankfull2$education <- factor(bankfull2$education, 
+                              levels = c("unknown", "primary", "secondary", "tertiary"),
+                              ordered = TRUE)
+
+
+# One-hot encoding for nominal variables
+nominal_vars <- c("job", "marital", "contact", "poutcome")
+bankfull2 <- bankfull2 %>%
+  mutate(across(all_of(nominal_vars), as.factor)) %>%
+  dummy_cols(select_columns = nominal_vars, remove_first_dummy = TRUE, remove_selected_columns = TRUE)
+
+
+# Convert month names to factor with correct order
+month_levels <- c("jan", "feb", "mar", "apr", "may", "jun", 
+                  "jul", "aug", "sep", "oct", "nov", "dec")
+bankfull2$month <- factor(bankfull2$month, levels = month_levels, ordered = TRUE)
+
+# Optional: Encode season
+bankfull2 <- bankfull2 %>%
+  mutate(season = case_when(
+    month %in% c("dec", "jan", "feb") ~ "winter",
+    month %in% c("mar", "apr", "may") ~ "spring",
+    month %in% c("jun", "jul", "aug") ~ "summer",
+    month %in% c("sep", "oct", "nov") ~ "autumn"
+  ))
+
+bankfull2$season <- as.factor(bankfull2$season)
+
+
+## Age Groups
+bankfull2 <- bankfull2 %>%
+  mutate(age_group = case_when(
+    age < 25 ~ "young",
+    age < 45 ~ "adult",
+    age < 65 ~ "middle_aged",
+    TRUE ~ "senior"
+  )) %>%
+  mutate(age_group = factor(age_group, levels = c("young", "adult", "middle_aged", "senior"), ordered = TRUE))
+
+## Balance Categories
+bankfull2 <- bankfull2 %>%
+  mutate(balance_category = case_when(
+    balance < 0 ~ "debt",
+    balance < 1000 ~ "low",
+    balance < 5000 ~ "medium",
+    TRUE ~ "high"
+  )) %>%
+  mutate(balance_category = factor(balance_category, levels = c("debt", "low", "medium", "high"), ordered = TRUE))
+
+## Customer Risk Profile
+bankfull2 <- bankfull2 %>%
+  mutate(risk_profile = case_when(
+    default == "yes" | loan == "yes" | housing == "yes" ~ "high_risk",
+    default == "no" & (loan == "yes" | housing == "yes") ~ "medium_risk",
+    TRUE ~ "low_risk"
+  )) %>%
+  mutate(risk_profile = factor(risk_profile, levels = c("low_risk", "medium_risk", "high_risk"), ordered = TRUE))
+
+
+# More contacts = higher intensity; pdays shows if previously contacted
+bankfull2 <- bankfull2 %>%
+  mutate(
+    contact_intensity = case_when(
+      campaign <= 1 ~ "low",
+      campaign <= 3 ~ "medium",
+      TRUE ~ "high"
+    ),
+    prev_contacted = ifelse(pdays == -1, "no", "yes")
+  ) %>%
+  mutate(across(c(contact_intensity, prev_contacted), as.factor))
+
+bankfull2$y <- as.factor(bankfull2$y)
+
+
+
+

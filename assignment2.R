@@ -42,7 +42,10 @@ summary(bank_data)
 #Klay
 -----------------------------------------------------------------------------------------------------------------------
   
-  ##A)Change non numberic category to numberic category
+ #Klay
+-----------------------------------------------------------------------------------------------------------------------
+  
+##A)Change non numberic category to numberic category
   
 #Part1: Education
 bank_data$education[bank_data$education == "primary"] <- 1
@@ -79,20 +82,17 @@ bank_data$housing[bank_data$housing == 'no'] = 2
 bank_data$loan[bank_data$loan == 'yes'] = 1
 bank_data$loan[bank_data$loan == 'no'] = 2
 
-#Paer7: Contact
-bank_data$contact[bank_data$contact == 'telephone'] = 1
-bank_data$contact[bank_data$contact == 'cellular'] = 2
 
-#Part8: Poutcome
+#Part: Poutcome
 bank_data$poutcome[bank_data$poutcome == 'success'] = 1
 bank_data$poutcome[bank_data$poutcome == 'failure'] = 2
 bank_data$poutcome[bank_data$poutcome == 'other'] = 3
 
-#Part9: y
+#Part8: y
 bank_data$y[bank_data$y == 'yes'] = 1
 bank_data$y[bank_data$y == 'no'] = 2
 
-#Part10: Remove day,month
+#Part9: Remove day,month
 bank_data <- subset(bank_data,select = -c(day,month))
 
 #-----------------------------------------------------------------------------------------------------------------------
@@ -116,16 +116,24 @@ bank_data$marital <- as.numeric(bank_data$marital)
 bank_data$default <- as.numeric(bank_data$default)
 bank_data$housing <- as.numeric(bank_data$housing)
 bank_data$loan <- as.numeric(bank_data$loan)
-bank_data$contact <- as.numeric(bank_data$contact)
 bank_data$poutcome <- as.numeric(bank_data$poutcome)
 bank_data$y <- as.numeric(bank_data$y)
 bank_data$y_fac <- as.factor(bank_data$y)
 
+
 # Replace NA to mode
-bank_data$education_impute_mode <- na_mean(bank_data$education, option = "mode")
-bank_data$job_impute_mode <- na_mean(bank_data$job, option = "mode")
-bank_data$poutcome_impute_mode <- na_mean(bank_data$poutcome, option = "mode")
-bank_data$contact_impute_mode <- na_mean(bank_data$contact, option = "mode")
+mode_education <- names(sort(table(bank_data$education), decreasing = TRUE))
+mode_job <- names(sort(table(bank_data$job), decreasing = TRUE))
+mode_poutcome <- names(sort(table(bank_data$poutcome), decreasing = TRUE))
+
+bank_data$education<- ifelse(is.na(bank_data$education), mode_education, bank_data$education)
+bank_data$job<- ifelse(is.na(bank_data$job), mode_job, bank_data$job)
+bank_data$poutcome<- ifelse(is.na(bank_data$poutcome), mode_poutcome, bank_data$poutcome)
+
+# Re-Check for missing values in all variables
+missing_values <- colSums(is.na(bank_data))
+# Print the count of missing values for each variable
+print(missing_values)
 
 #-----------------------------------------------------------------------------------------------------------------------
 ##c)Exploring Central Tendency

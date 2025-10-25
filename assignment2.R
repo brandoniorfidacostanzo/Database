@@ -702,3 +702,202 @@ ggplot(plot_data_subscribers, aes(x = campaign_log, y = balance)) +
        y = "Bank Balance") +
   theme_minimal()
 
+
+################################################################################
+# Joyce Section
+
+
+# Install required packages if not already installed
+required_packages <- c("randomForest", "xgboost", "caret", "pROC")
+
+for (pkg in required_packages) {
+  if (!requireNamespace(pkg, quietly = TRUE)) {
+    install.packages(pkg)
+  }
+}
+
+# Load required libraries
+library(randomForest)
+library(xgboost)
+library(caret)
+library(pROC)
+
+
+################################################################################
+# SECTION 3.4: DATA SAMPLING AND VALIDATION STRATEGY
+################################################################################
+
+cat("\n\n=== SECTION 3.4: DATA SAMPLING ===\n\n")
+
+# Set a random seed for reproducibility
+set.seed(123)
+
+# Determine the proportion of data for training (70%)
+train_proportion <- 0.7
+
+# Create an index for the training set by randomly sampling row numbers
+train_index <- sample(1:nrow(bank_data), 
+                      size = floor(train_proportion * nrow(bank_data)))
+
+# Split the bank_data data frame into training and testing sets
+train_data <- bank_data[train_index, ]
+test_data <- bank_data[-train_index, ]
+
+# Display the dimensions of the resulting data frames to verify the split
+cat("Dimensions of training data:\n")
+print(dim(train_data))
+cat("\nDimensions of testing data:\n")
+print(dim(test_data))
+
+# Check class distribution in training and testing sets
+cat("\nClass distribution in training set:\n")
+print(table(train_data$y))
+print(prop.table(table(train_data$y)))
+
+cat("\nClass distribution in testing set:\n")
+print(table(test_data$y))
+print(prop.table(table(test_data$y)))
+
+################################################################################
+# SECTION 3.5: MODEL DEVELOPMENT AND TRAINING
+################################################################################
+
+cat("\n\n=== SECTION 3.5: MODEL DEVELOPMENT ===\n\n")
+
+#-------------------------------------------------------------------------------
+# 3.5.1: LOGISTIC REGRESSION MODEL
+#-------------------------------------------------------------------------------
+
+cat("--- Training Logistic Regression Model ---\n\n")
+
+# Train a Logistic Regression model
+# The formula 'y ~ .' means predict 'y' using all other variables in the dataframe
+# The family = binomial() specifies logistic regression for a binary outcome
+logistic_model <- glm(y ~ ., data = train_data, family = binomial())
+
+# Print the summary of the logistic regression model
+cat("Logistic Regression Model Summary:\n")
+summary(logistic_model)
+
+#-------------------------------------------------------------------------------
+# 3.5.2: RANDOM FOREST MODEL
+#-------------------------------------------------------------------------------
+
+cat("\n\n--- Training Random Forest Model ---\n\n")
+
+# Set a random seed for reproducibility for the Random Forest model
+set.seed(456)
+
+# Train a Random Forest model
+random_forest_model <- randomForest(y ~ . - duration - loan - default, 
+                                    data = train_data, 
+                                    ntree = 500, 
+                                    importance = TRUE)
+
+# Print the random forest model
+cat("Random Forest Model:\n")
+print(random_forest_model)
+
+# Optional: Plot variable importance
+# varImpPlot(random_forest_model)
+
+#-------------------------------------------------------------------------------
+# 3.5.3: XGBOOST MODEL
+#-------------------------------------------------------------------------------
+
+cat("\n\n--- Training XGBoost Model ---\n\n")
+
+# Prepare the data for XGBoost
+
+train_data$y_numeric <- as.numeric(train_data$y) - 1
+test_data$y_numeric <- as.numeric(test_data$y) - 1
+
+# Create the data matrix for XGBoost
+
+train_matrix <- model.matrix(y_numeric ~ . - y - duration - loan - default, 
+                             data = train_data)[, -1]
+test_matrix <- model.matrix(y_numeric ~ . - y - duration - loan - default, 
+                            data = test_data)[, -1]
+
+# Create xgb.DMatrix objects
+dtrain <- xgb.DMatrix(data = train_matrix, label = train_data$y_numeric)
+dtest <- xgb.DMatrix(data = test_matrix, label = test_data$y_numeric)
+
+# Define XGBoost parameters
+params <- list(
+  objective = "binary:logistic",     # Objective for binary classification
+  eval_metric = "logloss",            # Evaluation metric
+  eta = 0.1,                          # Learning rate
+  max_depth = 6,                      # Maximum depth of a tree
+  subsample = 0.8,                    # Subsample ratio of the training instances
+  colsample_bytree = 0.8,             # Subsample ratio of columns when constructing each tree
+  seed = 789                          # Random seed for reproducibility
+)
+
+# Train the XGBoost model
+
+xgboost_model <- xgb.train(params = params,
+                           data = dtrain,
+                           nrounds = 200,                    # Number of boosting rounds
+                           watchlist = list(train = dtrain, eval = dtest),
+                           print_every_n = 10)               # Print evaluation results every 10 rounds
+
+# Print the trained model (basic info)
+cat("\nXGBoost Model:\n")
+print(xgboost_model)
+
+################################################################################
+# SECTION 3.6: MODEL EVALUATION AND COMPARISON
+################################################################################
+
+cat("\n\n=== SECTION 3.6: MODEL EVALUATION ===\n\n")
+
+#-------------------------------------------------------------------------------
+# 3.6.1: LOGISTIC REGRESSION EVALUATION
+#-------------------------------------------------------------------------------
+
+cat("--- Evaluating Logistic Regression Model ---\n\n")
+
+# Make predictions on the test set
+logistic_predictions_prob <- predict(logistic_model, newdata = test_data, type = "response")
+logistic_predictions <- ifelse(logistic_predictions_prob > 0.5, "yes", "no")
+logistic_predictions <- factor(logistic_predictions, levels = c("no", "yes"))
+
+# Create confusion matrix
+cat("\nConfusion Matrix for Logistic Regression (Threshold = 0.5):\n")
+cm_logistic <- confusionMatrix(logistic_predictions, test_data$y, positive = "no")
+print(cm_logistic)
+
+# Calculate AUC
+roc_logistic <- roc(test_data$y, logistic_predictions_prob, levels = c("no", "yes"))
+auc_logistic <- auc(roc_logistic)
+cat(paste("\nLogistic Regression AUC:", round(auc_logistic, 4), "\n"))
+
+#-------------------------------------------------------------------------------
+# 3.6.2: RANDOM FOREST EVALUATION (Optional - if needed)
+#-------------------------------------------------------------------------------
+
+# Note: Random Forest evaluation can be added here if needed
+# This section was trained but not included in the detailed evaluation comparison
+
+#-------------------------------------------------------------------------------
+# 3.6.3: XGBOOST EVALUATION
+#-------------------------------------------------------------------------------
+
+cat("\n\n--- Evaluating XGBoost Model ---\n\n")
+
+# Make predictions on the test set
+xgboost_predictions_prob <- predict(xgboost_model, dtest)
+xgboost_predictions <- ifelse(xgboost_predictions_prob > 0.5, "yes", "no")
+xgboost_predictions <- factor(xgboost_predictions, levels = c("no", "yes"))
+
+# Create confusion matrix
+cat("\nConfusion Matrix for XGBoost (Threshold = 0.5):\n")
+cm_xgboost <- confusionMatrix(xgboost_predictions, test_data$y, positive = "no")
+print(cm_xgboost)
+
+# Calculate AUC
+roc_xgboost <- roc(test_data$y, xgboost_predictions_prob, levels = c("no", "yes"))
+auc_xgboost <- auc(roc_xgboost)
+cat(paste("\nXGBoost AUC:", round(auc_xgboost, 4), "\n"))
+

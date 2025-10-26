@@ -722,6 +722,18 @@ library(xgboost)
 library(caret)
 library(pROC)
 
+################################################################################
+# Load the bank marketing dataset
+# Note: Update the file path to match your local directory
+bank_data <- read.csv("bankadditionalfull.csv", sep = ";", stringsAsFactors = TRUE)
+
+# Display basic information about the dataset
+cat("Dataset dimensions:\n")
+print(dim(bank_data))
+cat("\nDataset structure:\n")
+str(bank_data)
+cat("\nFirst few rows:\n")
+head(bank_data)
 
 ################################################################################
 # SECTION 3.4: DATA SAMPLING AND VALIDATION STRATEGY

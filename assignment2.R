@@ -8,7 +8,25 @@ install.packages("moments")
 install.packages("dplyr")
 install.packages("scales")
 install.packages("ggridges")
+install.packages("writexl")
+install.packages("tidyverse")
+install.packages("fastDummies")
+install.packages("moments")
+install.packages("dplyr")
+install.packages("caret")
+install.packages("recipes")
+install.packages("themis")
+install.packages("janitor")
+install.packages("corrplot")
+install.packages("smotefamily")
 
+library(smotefamily)
+library(corrplot)
+library(janitor)
+library(themis) 
+library(recipes)
+library(caret)
+library(writexl)
 library(dplyr)
 library(moments)
 library(randomForest)
@@ -19,361 +37,37 @@ library(randomForest)
 library(ggplot2)
 library(scales)
 library(ggridges)
+library(tidyverse)       
+library(fastDummies)     
+library(moments)         
+library(dplyr)
 
+# -----------------------------------------------------------------------------------------------------
+#   IMPORT AND MERGE DATA
+# -----------------------------------------------------------------------------------------------------
 
-#Brandon Section
-#-------------------------------------------------------------------------------------------------------------------
-bankfull1 <- read_delim(
-  file1_path,
-  delim = ";",    # Tell it the delimiter is a semicolon
-  quote = '"',      # Tell it that fields are enclosed in double quotes
-  trim_ws = TRUE    # A good practice to trim any extra spaces
-)
+# Define file paths
+file1_path <- "C:/Users/user/Downloads/bank+marketing (1)/bank/bank-full.csv"
+file2_path <- "C:/Users/user/Downloads/bank+marketing (1)/bank/bank.csv"
 
+# Read the datasets (semicolon-delimited format)
+bankfull1 <- read.csv2(file1_path)
+bankfull2 <- read.csv2(file2_path)
 
-bankfull1 <- read.csv2("/Users/brandoniorfida-costanzo/Desktop/University/INF30036 - Business Analytics/Assignment 2/bank/bank-full.csv")
-bankfull2 <- read.csv2("/Users/brandoniorfida-costanzo/Desktop/University/INF30036 - Business Analytics/Assignment 2/bank-additional/bank-additional-full.csv")
-bank_data <- bind_rows(bankfull1, bankfull2)
-str(bank_data)
+# Align column names (for consistent merge)
+colnames(bankfull2) <- colnames(bankfull1)
+
+# Merge both datasets and remove duplicate rows
+bank_data <- distinct(rbind(bankfull1, bankfull2))
+
 View(bank_data)
+str(bank_data)
 summary(bank_data)
 
+# -----------------------------------------------------------------------------------------------------
+#  Section 1: Data Exploration and Analysis
+# ----------------------------------------------------------------------------------------------------
 
-#Klay
------------------------------------------------------------------------------------------------------------------------
-  
- #Klay
------------------------------------------------------------------------------------------------------------------------
-  
-##A)Change non numberic category to numberic category
-  
-#Part1: Education
-bank_data$education[bank_data$education == "primary"] <- 1
-bank_data$education[bank_data$education == "secondary"] <- 2
-bank_data$education[bank_data$education == "tertiary"] <- 3
-
-#Part 2: Job
-bank_data$job[bank_data$job == "admin."]=1
-bank_data$job[bank_data$job == "blue-collar"]=2
-bank_data$job[bank_data$job == "entrepreneur"]=3
-bank_data$job[bank_data$job == "housemaid"]=4
-bank_data$job[bank_data$job == "management"]=5
-bank_data$job[bank_data$job == "retired"]=6
-bank_data$job[bank_data$job == "self-employed"]=7
-bank_data$job[bank_data$job == "services"]=8
-bank_data$job[bank_data$job == "student"]=9
-bank_data$job[bank_data$job == "technician"]=10
-bank_data$job[bank_data$job == "unemployed"]=11
-
-#Part 3:Marital
-bank_data$marital[bank_data$marital == "divorced"]=1
-bank_data$marital[bank_data$marital == "married"]=2
-bank_data$marital[bank_data$marital == "single"]=3
-
-#Part4:Default
-bank_data$default[bank_data$default == "yes"]=1
-bank_data$default[bank_data$default == "no"]=2
-
-#Part5:Hoursing
-bank_data$housing[bank_data$housing == 'yes'] = 1
-bank_data$housing[bank_data$housing == 'no'] = 2
-
-#Part6:Loan
-bank_data$loan[bank_data$loan == 'yes'] = 1
-bank_data$loan[bank_data$loan == 'no'] = 2
-
-
-#Part: Poutcome
-bank_data$poutcome[bank_data$poutcome == 'success'] = 1
-bank_data$poutcome[bank_data$poutcome == 'failure'] = 2
-bank_data$poutcome[bank_data$poutcome == 'other'] = 3
-
-#Part8: y
-bank_data$y[bank_data$y == 'yes'] = 1
-bank_data$y[bank_data$y == 'no'] = 2
-
-#Part9: Remove day,month
-bank_data <- subset(bank_data,select = -c(day,month))
-
-#-----------------------------------------------------------------------------------------------------------------------
-##B) Clean the data
-# Convert 'unknown' to NA
-bank_data$education[bankfull1$education == "unknown"] = NA
-bank_data$job[bank_data$job == "unknown"] = NA
-bank_data$poutcome[bank_data$poutcome == "unknown"] = NA
-bank_data$contact[bank_data$contact == "unknown"] = NA
-
-# Check for missing values in all variables
-missing_values <- colSums(is.na(bank_data))
-
-# Print the count of missing values for each variable
-print(missing_values)
-
-# Convert character to numeric
-bank_data$education <- as.numeric(bank_data$education)
-bank_data$job <- as.numeric(bank_data$job)
-bank_data$marital <- as.numeric(bank_data$marital)
-bank_data$default <- as.numeric(bank_data$default)
-bank_data$housing <- as.numeric(bank_data$housing)
-bank_data$loan <- as.numeric(bank_data$loan)
-bank_data$poutcome <- as.numeric(bank_data$poutcome)
-bank_data$y <- as.numeric(bank_data$y)
-bank_data$y_fac <- as.factor(bank_data$y)
-
-
-# Replace NA to mode
-mode_education <- names(sort(table(bank_data$education), decreasing = TRUE))
-mode_job <- names(sort(table(bank_data$job), decreasing = TRUE))
-mode_poutcome <- names(sort(table(bank_data$poutcome), decreasing = TRUE))
-
-bank_data$education<- ifelse(is.na(bank_data$education), mode_education, bank_data$education)
-bank_data$job<- ifelse(is.na(bank_data$job), mode_job, bank_data$job)
-bank_data$poutcome<- ifelse(is.na(bank_data$poutcome), mode_poutcome, bank_data$poutcome)
-
-# Re-Check for missing values in all variables
-missing_values <- colSums(is.na(bank_data))
-# Print the count of missing values for each variable
-print(missing_values)
-
-#-----------------------------------------------------------------------------------------------------------------------
-##c)Exploring Central Tendency
-
-# Part1:Duration
-hist(bank_data$duration)
-summary(bank_data$duration)
-summary(log10(bank_data$duration + 1))
-summary(sqrt(bank_data$duration + 1))
-p1 <- qplot(x = duration, data = bank_data)
-p2 <- qplot(x = log10(duration + 1), data = bank_data)
-p3 <- qplot(x = sqrt(duration + 1), data = bank_data)
-gridExtra::grid.arrange(p1, p2, p3, ncol = 1)
-
-original_duration <- bank_data$duration
-original_duration_skew <- skewness(original_duration)
-print(paste("Original Duration Skewness: ", original_duration_skew))
-
-log_transformed_duration <- log10(original_duration + 1)
-log_duration_skew <- skewness(log_transformed_duration)
-print(paste("Log-Transformed Data Skewness: ", log_duration_skew))
-
-sqrt_transformed_duration <- sqrt(original_duration + 1)
-sqrt_duration_skew <- skewness(sqrt_transformed_duration)
-print(paste("Square Root-Transformed Duration Skewness: ", sqrt_duration_skew))
-
-# Part2:Age
-hist(bank_data$age)
-summary(bank_data$age)
-summary(log10(bank_data$age + 1))
-summary(sqrt(bank_data$age + 1))
-p4 <- qplot(x = age, data = bank_data)
-p5 <- qplot(x = log10(age + 1), data = bank_data)
-p6 <- qplot(x = sqrt(age + 1), data = bank_data)
-gridExtra::grid.arrange(p4, p5, p6, ncol = 1)
-
-original_age <- bank_data$age
-original_age_skew <- skewness(original_age)
-print(paste("Original Age Skewness: ", original_age_skew))
-
-log_transformed_age <- log10(original_age + 1)
-log_age_skew <- skewness(log_transformed_age)
-print(paste("Log-Transformed Age Skewness: ", log_age_skew))
-
-sqrt_transformed_age <- sqrt(original_age + 1)
-sqrt_age_skew <- skewness(sqrt_transformed_age)
-print(paste("Square Root-Transformed Age Skewness: ", sqrt_age_skew))
-
-# Part3: Balance
-hist(bank_data$balance)
-summary(bank_data$balance)
-summary(log10(bank_data$balance + 1))
-summary(sqrt(bank_data$balance + 1))
-p7 <- qplot(x = balance, data = bank_data)
-p8 <- qplot(x = log10(balance + 1), data = bank_data)
-p9 <- qplot(x = sqrt(balance + 1), data = bank_data)
-gridExtra::grid.arrange(p7, p8, p9, ncol = 1)
-
-original_balance <- bank_data$balance
-original_balance_skew <- skewness(original_balance)
-print(paste("Original Balance Skewness: ", original_balance_skew))
-
-log_transformed_balance <- log10(original_balance + 1)
-log_balance_skew <- skewness(log_transformed_balance)
-print(paste("Log-Transformed Balance Skewness: ", log_balance_skew))
-
-sqrt_transformed_balance <- sqrt(original_balance + 1 )
-sqrt_balance_skew <- skewness(sqrt_transformed_balance)
-print(paste("Square Root-Transformed Balance Skewness: ", sqrt_balance_skew))
-
-# Part4: Previous
-hist(bank_data$previous)
-summary(bank_data$previous)
-summary(log10(bank_data$previous + 1))
-summary(sqrt(bank_data$previous + 1))
-p10 <- qplot(x = previous, data = bank_data)
-p11 <- qplot(x = log10(previous + 1), data = bank_data)
-p12 <- qplot(x = sqrt(previous), data = bank_data)
-gridExtra::grid.arrange(p10, p11, p12, ncol = 1)
-
-original_previous <- bank_data$previous
-original_previous_skew <- skewness(original_previous)
-print(paste("Original Previous Skewness: ", original_previous_skew))
-
-log_transformed_previous <- log10(original_previous + 1)
-log_previous_skew <- skewness(log_transformed_previous)
-print(paste("Log-Transformed Previous Skewness: ", log_previous_skew))
-
-sqrt_transformed_previous <- sqrt(original_previous + 1)
-sqrt_previous_skew <- skewness(sqrt_transformed_previous)
-print(paste("Square Root-Transformed Previous Skewness: ", sqrt_previous_skew))
-
-# Part5: pdays
-hist(bank_data$pdays)
-summary(bank_data$pdays)
-summary(log10(bank_data$pdays + 1))
-summary(sqrt(bank_data$pdays + 1))
-p13 <- qplot(x = pdays, data = bank_data)
-p14 <- qplot(x = log10(pdays + 1), data = bank_data)
-p15 <- qplot(x = sqrt(pdays + 1), data = bank_data)
-gridExtra::grid.arrange(p13, p14, p15, ncol = 1)
-
-original_pdays <- bank_data$pdays
-original_pdays_skew <- skewness(original_pdays)
-print(paste("Original Pdays Skewness: ", original_pdays_skew))
-
-log_transformed_pdays <- log10(original_pdays + 1)
-log_pdays_skew <- skewness(log_transformed_pdays)
-print(paste("Log-Transformed Pdays Skewness: ", log_pdays_skew))
-
-sqrt_transformed_pdays <- sqrt(original_pdays + 1)
-sqrt_pdays_skew <- skewness(sqrt_transformed_pdays)
-print(paste("Square Root-Transformed Pdays Skewness: ", sqrt_pdays_skew))
-
-# Part6: campaign
-hist(bank_data$campaign)
-summary(bank_data$campaign)
-summary(log10(bank_data$campaign + 1))
-summary(sqrt(bank_data$campaign + 1))
-p16 <- qplot(x = campaign, data = bank_data)
-p17 <- qplot(x = log10(campaign + 1), data = bank_data)
-p18 <- qplot(x = sqrt(campaign + 1), data = bank_data)
-gridExtra::grid.arrange(p16, p17, p18, ncol = 1)
-
-original_campaign <- bank_data$campaign
-original_campaign_skew <- skewness(original_campaign)
-print(paste("Original Campaign Skewness: ", original_campaign_skew))
-
-log_transformed_campaign <- log10(original_campaign + 1)
-log_campaign_skew <- skewness(log_transformed_campaign)
-print(paste("Log-Transformed Campaign Skewness: ", log_campaign_skew))
-
-sqrt_transformed_campaign <- sqrt(original_campaign + 1)
-sqrt_campaign_skew <- skewness(sqrt_transformed_campaign)
-print(paste("Square Root-Transformed Campaign Skewness: ", sqrt_campaign_skew))
-
-#-----------------------------------------------------------------------------------------------------------------------
-##D)Adding Column for Log-Transformed Numeric Values
-bank_data$duration_log <- log10(bank_data$duration + 1)
-bank_data$age_log <- log10(bank_data$age + 1)
-bank_data$previous_log <- log10(bank_data$previous + 1)
-bank_data$campaign_log <- log10(bank_data$campaign + 1)
-#-----------------------------------------------------------------------------------------------------------------------
-##E) Min-max normalization for numerical values
-
-#Part1: Age
-min_1<-min(bank_data$age_log)
-max_1<-max(bank_data$age_log)
-Value_1<-bank_data$age_log
-norm_value_1 <- (Value_1-min_1)/(max_1-min_1)
-bank_data$age_norm <- norm_value_1
-
-#Part2: Balance
-min_2<-min(bank_data$balance)
-max_2<-max(bank_data$balance)
-Value_2<-bank_data$balance
-norm_value_2 <- (Value_2-min_2)/(max_2-min_2)
-bank_data$balance_norm <- norm_value_2
-
-#Part3:Pdyas
-min_3<-min(bank_data$pdays)
-max_3<-max(bank_data$pdays)
-Value_3<-bank_data$pdays
-norm_value_3 <- (Value_3-min_3)/(max_3-min_3)
-bank_data$pdays_norm <- norm_value_3
-
-#Part4:Duration
-min_4<-min(bank_data$duration_log)
-max_4<-max(bank_data$duration_log)
-Value_4<-bank_data$duration_log
-norm_value_4 <- (Value_4-min_4)/(max_4-min_4)
-bank_data$duration_norm <- norm_value_4
-
-#Paer5: Campaign
-min_5<-min(bank_data$campaign_log)
-max_5<-max(bank_data$campaign_log)
-Value_5<-bank_data$campaign_log
-norm_value_5 <- (Value_5-min_5)/(max_5-min_5)
-bank_data$campaign_norm <- norm_value_5
-
-#Part6: Previous
-min_6<-min(bank_data$previous_log)
-max_6<-max(bank_data$previous_log)
-Value_6<-bank_data$previous_log
-norm_value_6 <- (Value_6-min_6)/(max_6-min_6)
-bank_data$previous_norm <- norm_value_6
-
-min_7<-min(bank_data$previous)
-max_7<-max(bank_data$previous)
-Value_7<-bank_data$previous
-norm_value_7 <- (Value_7-min_7)/(max_7-min_7)
-bank_data$previous_norm1 <- norm_value_7
-
-
-#------------------------------------------------------------------------------
-##E) Compare original, log/min-max and min-max distribution
-
-# Part1: Duration
-print(paste("Original Duration Skewness: ", original_duration_skew))
-print(paste("Log-Transformed Duration Skewness: ", log_duration_skew))
-norm_duration_skew <- skewness(bank_data$duration_norm)
-print(paste("Log-Transformed Min-Max Normalized Duration Skewness: ",
-            norm_duration_skew))
-# Part2 age
-print(paste("Original Age Skewness: ", original_age_skew))
-print(paste("Log-Transformed Age Skewness: ", log_age_skew))
-norm_age_skew <- skewness(bank_data$age_norm)
-print(paste("Log-Transformed Min-Max Normalized Age Skewness: ", norm_age_skew))
-
-# Part3:previous
-print(paste("Original Previous Skewness: ", original_previous_skew))
-print(paste("Log-Transformed Previous Skewness: ", log_previous_skew))
-norm_previous_skew <- skewness(bank_data$previous_norm)
-print(paste("Log-Transformed Min-Max Normalized Previous Skewness: ",
-            norm_previous_skew))
-
-norm_log_previous <- log10(bank_data$previous_norm1 + 1)
-norm_log_previous_skew <- skewness(norm_log_previous)
-print(paste("Min-Max Normalized Log-Transformed Previous Skewness: ",
-            norm_log_previous_skew))
-
-# Part4 campaign
-print(paste("Original Campaign Skewness: ", original_campaign_skew))
-print(paste("Log-Transformed Campaign Skewness: ", log_campaign_skew))
-norm_campaign_skew <- skewness(bank_data$campaign_norm)
-print(paste("Min-Max Normalized Campaign Skewness: ", norm_campaign_skew))
-
-# Part5 pdays
-print(paste("Original Pdays Skewness: ", original_pdays_skew))
-norm_pdays_skew <- skewness(bank_data$pdays_norm)
-print(paste("Log-Transformed Min-Max Normalized Pdays Skewness: ", norm_pdays_skew))
-
-# Part6: Balance
-print(paste("Original Balance Skewness: ", original_balance_skew))
-norm_balance_skew <- skewness(bank_data$balance_norm)
-print(paste("Log-Transformed Min-Max Normalized Balance Skewness: ", norm_balance_skew))
-
-
-#Brandon
-#-----------------------------------------------------------------------------------------------------------------------
 bank_data <- bank_data %>%
   mutate(y_subscription = factor(y, levels = c(1, 2), labels = c("Yes", "No")))
 
@@ -703,94 +397,318 @@ ggplot(plot_data_subscribers, aes(x = campaign_log, y = balance)) +
   theme_minimal()
 
 
-################################################################################
-# Joyce Section
 
 
-# Install required packages if not already installed
-required_packages <- c("randomForest", "xgboost", "caret", "pROC")
+# -----------------------------------------------------------------------------------------------------
+#  Section 2: Data Preparation and Feature Engineering
+# ----------------------------------------------------------------------------------------------------
 
-for (pkg in required_packages) {
-  if (!requireNamespace(pkg, quietly = TRUE)) {
-    install.packages(pkg)
+
+# -----------------------------------------------------------------------------------------------------
+#  STEP 1: INITIAL DATA CLEANING
+# -----------------------------------------------------------------------------------------------------
+
+# Replace "unknown" with NA to mark missing entries
+bank_data[bank_data == "unknown"] <- NA
+
+# Check missing values
+missing_values <- colSums(is.na(bank_data))
+cat("\n🔍 Missing values per variable:\n")
+print(missing_values)
+
+get_mode <- function(x) {
+  ux <- na.omit(unique(x))                # unique non-NA values
+  ux[which.max(tabulate(match(x, ux)))]   # returns the most frequent value
+}
+
+# Loop through each column and replace NA with mode (if any)
+for (col in names(bank_data)) {
+  if (any(is.na(bank_data[[col]]))) {
+    mode_value <- get_mode(bank_data[[col]])
+    bank_data[[col]][is.na(bank_data[[col]])] <- mode_value
+    cat("✅ Missing values in", col, "replaced with mode:", mode_value, "\n")
   }
 }
 
-# Load required libraries
-library(randomForest)
-library(xgboost)
-library(caret)
-library(pROC)
+# Verify that there are no missing values left
+cat("\n🔍 Checking for remaining missing values:\n")
+print(colSums(is.na(bank_data)))
 
-################################################################################
-# Load the bank marketing dataset
-# Note: Update the file path to match your local directory
-bank_data <- read.csv("bankadditionalfull.csv", sep = ";", stringsAsFactors = TRUE)
+# -----------------------------------------------------------------------------------------------------
+#  STEP 2: HANDLE CATEGORICAL VARIABLES
+# -----------------------------------------------------------------------------------------------------
 
-# Display basic information about the dataset
-cat("Dataset dimensions:\n")
-print(dim(bank_data))
-cat("\nDataset structure:\n")
+#  2.1 Education (Ordinal Variable)
+# Order matters: primary < secondary < tertiary
+bank_data$education <- factor(bank_data$education,
+                              levels = c("primary", "secondary", "tertiary"),
+                              ordered = TRUE)
+
+# 2.2 Binary Variables (yes/no) → 1/0 encoding
+binary_to_num <- function(x) ifelse(x == "yes", 1, 0)
+bank_data$default <- binary_to_num(bank_data$default)
+bank_data$housing <- binary_to_num(bank_data$housing)
+bank_data$loan <- binary_to_num(bank_data$loan)
+bank_data$y <- binary_to_num(bank_data$y)
+
+# 2.3 Nominal Variables (job, marital, contact, poutcome)
+# One-hot encoding (create dummy columns for each category)
+bank_data <- dummy_cols(bank_data,
+                        select_columns = c("job", "marital", "contact", "poutcome"),
+                        remove_first_dummy = TRUE,    # drop one dummy to avoid multicollinearity
+                        remove_selected_columns = TRUE)
+
+# 2.4 Convert ordinal factor to numeric (preserves order)
+bank_data$education_num <- as.numeric(bank_data$education)
+bank_data$default_num <- as.numeric(bank_data$default)
+bank_data$housing_num <- as.numeric(bank_data$housing)
+bank_data$loan_num <- as.numeric(bank_data$loan)
+bank_data$y_num <- as.numeric(bank_data$y)
+
+
+# -----------------------------------------------------------------------------------------------------
+#  STEP 3: HANDLE TEMPORAL AND SEASONAL VARIABLES
+# -----------------------------------------------------------------------------------------------------
+
+# 3.1 Month: Convert to numeric and assign seasons
+month_levels <- c("jan","feb","mar","apr","may","jun","jul","aug","sep","oct","nov","dec")
+bank_data$month <- factor(bank_data$month, levels = month_levels)
+
+# Convert month to numeric order (1–12)
+bank_data$month_num <- as.numeric(bank_data$month)
+
+# Assign season based on marketing patterns
+bank_data$season <- case_when(
+  bank_data$month %in% c("mar","apr","may") ~ "Spring",
+  bank_data$month %in% c("jun","jul","aug") ~ "Summer",
+  bank_data$month %in% c("sep","oct","nov") ~ "Autumn",
+  TRUE ~ "Winter"
+)
+
+# Drop 'day' variable as it doesn’t carry useful predictive info
+bank_data <- subset(bank_data, select = -c(day))
+
+
+
+# -----------------------------------------------------------------------------------------------------
+#  STEP 4: FEATURE ENGINEERING — Deriving New Insights
+# -----------------------------------------------------------------------------------------------------
+
+# 4.1 Age Group
+bank_data$age_group <- cut(bank_data$age,
+                           breaks = c(0, 25, 35, 50, 65, 100),
+                           labels = c("Youth", "YoungAdult", "MiddleAge", "Senior", "Elder"))
+
+# 4.2 Balance Category
+bank_data$balance_category <- cut(bank_data$balance,
+                                  breaks = c(-Inf, 0, 1000, 5000, Inf),
+                                  labels = c("Debt", "Low", "Medium", "High"))
+
+# 4.3 Customer Risk Score
+# Clients with either default or loan = high risk
+bank_data$risk_score <- ifelse(bank_data$default == 1 | bank_data$loan == 1, "High", "Low")
+
+# 4.4 Campaign Intensity
+# Ratio of contacts in this campaign vs previous attempts
+bank_data$campaign_intensity <- bank_data$campaign / (bank_data$previous + 1)
+
+# 4.5 Recently Contacted Flag (pdays < 30)
+bank_data$recently_contacted <- ifelse(bank_data$pdays < 30, 1, 0)
+
+# -----------------------------------------------------------------------------------------------------
+#  STEP 5: TRANSFORMATION & NORMALIZATION
+# -----------------------------------------------------------------------------------------------------
+
+# Identify continuous numeric variables
+numeric_vars <- c("age", "balance", "duration", "pdays", "campaign", "previous")
+
+# 5.1 Safe Log Transformation
+for (v in numeric_vars) {
+  # Replace negative or NA values with 0 before log
+  safe_values <- pmax(bank_data[[v]], 0)
+  safe_values[is.na(safe_values)] <- 0
+  bank_data[[paste0(v, "_log")]] <- log10(safe_values + 1)
+}
+
+# 5.2 Min-Max Normalization
+normalize <- function(x) {
+  x <- ifelse(is.na(x), 0, x)  # Replace NA with 0
+  if (max(x) != min(x)) {
+    (x - min(x)) / (max(x) - min(x))
+  } else {
+    rep(0, length(x))  # Avoid division by zero
+  }
+}
+
+for (v in numeric_vars) {
+  log_col <- paste0(v, "_log")
+  norm_col <- paste0(v, "_norm")
+  bank_data[[norm_col]] <- normalize(bank_data[[log_col]])
+}
+
+}
+
+# -----------------------------------------------------------------------------------------------------
+#  STEP 6: FINAL INSPECTION 
+# -----------------------------------------------------------------------------------------------------
+
+# Check structure and summary statistics
 str(bank_data)
-cat("\nFirst few rows:\n")
-head(bank_data)
+summary(bank_data)
 
-################################################################################
-# SECTION 3.4: DATA SAMPLING AND VALIDATION STRATEGY
-################################################################################
 
-cat("\n\n=== SECTION 3.4: DATA SAMPLING ===\n\n")
+# -----------------------------------------------------------------------------------------------------
+#  Section 3: Data Sampling and Validation Strategy 
+# -----------------------------------------------------------------------------------------------------
 
-# Set a random seed for reproducibility
+# -----------------------------------------------------------------------------------------------------
+#  STEP 1: STRATIFIED SAMPLING
+# -----------------------------------------------------------------------------------------------------
+
+
+
 set.seed(123)
-
-# Determine the proportion of data for training (70%)
 train_proportion <- 0.7
-
-# Create an index for the training set by randomly sampling row numbers
 train_index <- sample(1:nrow(bank_data), 
                       size = floor(train_proportion * nrow(bank_data)))
+train_data <- bank_data[train_index,]
+test_data <- bank_data[-train_index,]
 
-# Split the bank_data data frame into training and testing sets
-train_data <- bank_data[train_index, ]
-test_data <- bank_data[-train_index, ]
+# Ensure target is a factor
+train_data$y <- as.factor(train_data$y)
+test_data$y  <- as.factor(test_data$y)
+
+
+# -----------------------------------------------------------------------------------------------------
+#  STEP 2: BASE RECIPE
+# -----------------------------------------------------------------------------------------------------
+
+base_recipe <- function(bank_data) {
+  recipe(y ~ ., data = bank_data ) %>%
+    step_impute_mode(all_nominal_predictors()) %>%
+    step_impute_median(all_numeric_predictors()) %>%
+    step_dummy(all_nominal_predictors()) %>%
+    step_zv(all_predictors())
+}
+
+#----------------------------------------------------------------------------------------------------
+# STEP 3: CREATE MULTIPLE SAMPLING
+# -----------------------------------------------------------------------------------------------------
+
+# 3.1 SMOTE 
+table(train_data$y)
+
+# Calculate percentage of each class
+cat("\nPercentages:\n")
+prop.table(table(train_data$y)) * 100
+
+# Simple bar chart
+barplot(table(train_data$y),
+        main = "BEFORE SMOTE: Highly Imbalanced!",
+        col = c("skyblue", "orange"),
+        ylab = "Number of Customers",
+        names.arg = c("No Subscription", "Yes Subscription"))
+
+train_data_nominal <- train_data %>% select(-sample_weight)
+
+# Separate features (X) and target (y)
+X <- train_data_nominal[, !(names(train_data_nominal) %in% c("y"))]
+y <- train_data_nominal$y
+X_numeric <- X %>% select(where(is.numeric))
+
+# Apply SMOTE (Synthetic Minority Oversampling Technique)
+# K = number of nearest neighbors (can tune)
+smote_result <- SMOTE(X_numeric, y, K = 5)
+
+balanced_data <- smote_result$data
+names(bank_data$y) <- "Subscription of Customers"
+
+cat("BALANCED DATA:\n")
+cat("Total transactions:", nrow(balanced_data), "\n\n")
+
+# Count each type
+table(balanced_data$y_num)
+
+# Calculate percentages
+cat("\nPercentages:\n")
+prop.table(table(balanced_data$fraud)) * 100
+
+# Simple bar chart
+barplot(table(balanced_data$y),
+        main = "AFTER SMOTE: Balanced!",
+        col = c("green", "red"),
+        ylab = "Number of Transactions")
+
+
+
+# 3.2 oversampling 
+rec_scaled_balanced <- base_recipe(train_data) %>%
+  step_center(all_numeric_predictors()) %>%
+  step_scale(all_numeric_predictors()) %>%
+  step_upsample(y) %>%
+  prep(training = train_data, retain = TRUE)
+
+
+train_scaled_balanced <- juice(rec_scaled_balanced)
+test_scaled_balanced  <- bake(rec_scaled_balanced, new_data = test_data)
+
+# 3.3 undersampling 
+rec_scaled_downsample <- base_recipe(train_data) %>%
+  step_center(all_numeric_predictors()) %>%
+  step_scale(all_numeric_predictors()) %>%
+  step_downsample(y) %>%
+  prep(training = train_data, retain = TRUE)
+
+train_scaled_downsample <- juice(rec_scaled_downsample)
+test_scaled_downsample  <- bake(rec_scaled_downsample, new_data = test_data)
+
+#3.4 Cost-sensitive sampling
+
+class_counts <- table(train_data$y)
+cat("Class distribution in training data:\n")
+print(class_counts)
+class_weights <- 1 / class_counts
+class_weights <- class_weights / sum(class_weights)  # normalize so weights sum to 1
+cat("\nCalculated class weights:\n")
+print(class_weights)
+
+train_data$sample_weight <- ifelse(train_data$y == 1,
+                                   class_weights["1"],
+                                   class_weights["0"])
+
+cost_factor <- 5  # can adjust this value if needed
+train_data$sample_weight <- ifelse(train_data$y == 1,
+                                   train_data$sample_weight * cost_factor,
+                                   train_data$sample_weight)
+
+train_cost_sensitive <- train_data
+test_cost_sensitive  <- test_data
 
 # Display the dimensions of the resulting data frames to verify the split
 cat("Dimensions of training data:\n")
-print(dim(train_data))
+print(dim(train_cost_sensitive))
 cat("\nDimensions of testing data:\n")
-print(dim(test_data))
+print(dim(test_cost_sensitive))
 
 # Check class distribution in training and testing sets
 cat("\nClass distribution in training set:\n")
-print(table(train_data$y))
-print(prop.table(table(train_data$y)))
+print(table(train_cost_sensitive$y))
+print(prop.table(table(train_cost_sensitive$y)))
 
 cat("\nClass distribution in testing set:\n")
-print(table(test_data$y))
-print(prop.table(table(test_data$y)))
+print(table(test_cost_sensitive$y))
+print(prop.table(table(test_cost_sensitive$y)))
 
-################################################################################
-# SECTION 3.5: MODEL DEVELOPMENT AND TRAINING
-################################################################################
 
-cat("\n\n=== SECTION 3.5: MODEL DEVELOPMENT ===\n\n")
 
-#-------------------------------------------------------------------------------
-# 3.5.1: LOGISTIC REGRESSION MODEL
-#-------------------------------------------------------------------------------
 
-cat("--- Training Logistic Regression Model ---\n\n")
+# -----------------------------------------------------------------------------------------------------
+#  Section 4: Model Development and Training
+# -----------------------------------------------------------------------------------------------------
 
-# Train a Logistic Regression model
-# The formula 'y ~ .' means predict 'y' using all other variables in the dataframe
-# The family = binomial() specifies logistic regression for a binary outcome
-logistic_model <- glm(y ~ ., data = train_data, family = binomial())
-
-# Print the summary of the logistic regression model
-cat("Logistic Regression Model Summary:\n")
-summary(logistic_model)
-
+# -----------------------------------------------------------------------------------------------------
+#  STEP 1: 
+# -----------------------------------------------------------------------------------------------------
 
 
 

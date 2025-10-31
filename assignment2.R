@@ -438,33 +438,65 @@ print(colSums(is.na(bank_data)))
 #  STEP 2: HANDLE CATEGORICAL VARIABLES
 # -----------------------------------------------------------------------------------------------------
 
-#  2.1 Education (Ordinal Variable)
-# Order matters: primary < secondary < tertiary
-bank_data$education <- factor(bank_data$education,
-                              levels = c("primary", "secondary", "tertiary"),
-                              ordered = TRUE)
+bank_data$education[bank_data$education == "primary"] <- 1
+bank_data$education[bank_data$education == "secondary"] <- 2
+bank_data$education[bank_data$education == "tertiary"] <- 3
 
-# 2.2 Binary Variables (yes/no) → 1/0 encoding
-binary_to_num <- function(x) ifelse(x == "yes", 1, 0)
-bank_data$default <- binary_to_num(bank_data$default)
-bank_data$housing <- binary_to_num(bank_data$housing)
-bank_data$loan <- binary_to_num(bank_data$loan)
-bank_data$y <- binary_to_num(bank_data$y)
+#Part 2: Job
+bank_data$job[bank_data$job == "admin."]=1
+bank_data$job[bank_data$job == "blue-collar"]=2
+bank_data$job[bank_data$job == "entrepreneur"]=3
+bank_data$job[bank_data$job == "housemaid"]=4
+bank_data$job[bank_data$job == "management"]=5
+bank_data$job[bank_data$job == "retired"]=6
+bank_data$job[bank_data$job == "self-employed"]=7
+bank_data$job[bank_data$job == "services"]=8
+bank_data$job[bank_data$job == "student"]=9
+bank_data$job[bank_data$job == "technician"]=10
+bank_data$job[bank_data$job == "unemployed"]=11
 
-# 2.3 Nominal Variables (job, marital, contact, poutcome)
-# One-hot encoding (create dummy columns for each category)
-bank_data <- dummy_cols(bank_data,
-                        select_columns = c("job", "marital", "contact", "poutcome"),
-                        remove_first_dummy = TRUE,    # drop one dummy to avoid multicollinearity
-                        remove_selected_columns = TRUE)
+#Part 3:Marital
+bank_data$marital[bank_data$marital == "divorced"]=1
+bank_data$marital[bank_data$marital == "married"]=2
+bank_data$marital[bank_data$marital == "single"]=3
+
+#Part4:Default
+bank_data$default[bank_data$default == "yes"]=1
+bank_data$default[bank_data$default == "no"]=2
+
+#Part5:Hoursing
+bank_data$housing[bank_data$housing == 'yes'] = 1
+bank_data$housing[bank_data$housing == 'no'] = 2
+
+#Part6:Loan
+bank_data$loan[bank_data$loan == 'yes'] = 1
+bank_data$loan[bank_data$loan == 'no'] = 2
+
+#Paer7: Contact
+bank_data$contact[bank_data$contact == 'telephone'] = 1
+bank_data$contact[bank_data$contact == 'cellular'] = 2
+
+#Part8: Poutcome
+bank_data$poutcome[bank_data$poutcome == 'success'] = 1
+bank_data$poutcome[bank_data$poutcome == 'failure'] = 2
+bank_data$poutcome[bank_data$poutcome == 'other'] = 3
+
+#Part9: y
+bank_data$y[bank_data$y == 'yes'] = 1
+bank_data$y[bank_data$y == 'no'] = 2
+
 
 # 2.4 Convert ordinal factor to numeric (preserves order)
-bank_data$education_num <- as.numeric(bank_data$education)
-bank_data$default_num <- as.numeric(bank_data$default)
-bank_data$housing_num <- as.numeric(bank_data$housing)
-bank_data$loan_num <- as.numeric(bank_data$loan)
-bank_data$y_num <- as.numeric(bank_data$y)
-
+bank_data$education <- as.numeric(bank_data$education)
+bank_data$job <- as.numeric(bank_data$job)
+bank_data$marital <- as.numeric(bank_data$marital)
+bank_data$default <- as.numeric(bank_data$default)
+bank_data$housing <- as.numeric(bank_data$housing)
+bank_data$loan <- as.numeric(bank_data$loan)
+bank_data$contact <- as.numeric(bank_data$contact)
+bank_data$poutcome <- as.numeric(bank_data$poutcome)
+bank_data$y <- as.numeric(bank_data$y)
+bank_data$y_fac <- as.factor(bank_data$y)
 
 # -----------------------------------------------------------------------------------------------------
 #  STEP 3: HANDLE TEMPORAL AND SEASONAL VARIABLES
@@ -546,7 +578,6 @@ for (v in numeric_vars) {
   bank_data[[norm_col]] <- normalize(bank_data[[log_col]])
 }
 
-}
 
 # -----------------------------------------------------------------------------------------------------
 #  STEP 6: FINAL INSPECTION 
@@ -564,8 +595,6 @@ summary(bank_data)
 # -----------------------------------------------------------------------------------------------------
 #  STEP 1: STRATIFIED SAMPLING
 # -----------------------------------------------------------------------------------------------------
-
-
 
 set.seed(123)
 train_proportion <- 0.7
@@ -591,76 +620,141 @@ base_recipe <- function(bank_data) {
     step_zv(all_predictors())
 }
 
-#----------------------------------------------------------------------------------------------------
-# STEP 3: CREATE MULTIPLE SAMPLING
+# -----------------------------------------------------------------------------------------------------
+#  STEP 3: Sampling
 # -----------------------------------------------------------------------------------------------------
 
-# 3.1 SMOTE 
+#3.1 SMOTE SAMPLING
+
+# Check the class distribution in the target variable
+
+cat("ORIGINAL DATA:\n")
+
+cat("Total transactions:", nrow(train_data), "\n\n")
 table(train_data$y)
 
-# Calculate percentage of each class
+# Calculate percentages for each class
 cat("\nPercentages:\n")
 prop.table(table(train_data$y)) * 100
 
-# Simple bar chart
-barplot(table(train_data$y),
-        main = "BEFORE SMOTE: Highly Imbalanced!",
-        col = c("skyblue", "orange"),
-        ylab = "Number of Customers",
-        names.arg = c("No Subscription", "Yes Subscription"))
+# Simple bar chart to visualize class imbalance
+barplot(table(bank_data$y),
+        main = "BEFORE SMOTE: Very Imbalanced!",
+        col = c("green", "red"),
+        ylab = "Number of Transactions")
 
-train_data_nominal <- train_data %>% select(-sample_weight)
+library(smotefamily)
 
-# Separate features (X) and target (y)
-X <- train_data_nominal[, !(names(train_data_nominal) %in% c("y"))]
-y <- train_data_nominal$y
-X_numeric <- X %>% select(where(is.numeric))
+# Separate features (X) and target (y) for SMOTE
+X <- train_data[, c("age", "balance")]  # All columns except 'y'
+y <- train_data$y  # Target variable: whether the customer subscribed
 
-# Apply SMOTE (Synthetic Minority Oversampling Technique)
-# K = number of nearest neighbors (can tune)
-smote_result <- SMOTE(X_numeric, y, K = 5)
+# Apply SMOTE to generate synthetic samples for the minority class
+smote_result <- SMOTE(X, y, K = 5)
 
-balanced_data <- smote_result$data
-names(bank_data$y) <- "Subscription of Customers"
+# Get the balanced data
+train_SMOTE_Balanced_Data <- smote_result$data
+names(balanced_data)[ncol(balanced_data)] <- "y"  # Ensure column name for target is 'y'
+
 
 cat("BALANCED DATA:\n")
 cat("Total transactions:", nrow(balanced_data), "\n\n")
+table(balanced_data$y)
 
-# Count each type
-table(balanced_data$y_num)
-
-# Calculate percentages
+# Calculate percentages for each class in the balanced data
 cat("\nPercentages:\n")
-prop.table(table(balanced_data$fraud)) * 100
+prop.table(table(balanced_data$y)) * 100
 
-# Simple bar chart
+# Visualize the class distribution after SMOTE
 barplot(table(balanced_data$y),
         main = "AFTER SMOTE: Balanced!",
         col = c("green", "red"),
         ylab = "Number of Transactions")
 
+#Stratified Cross-Validation
+library(ggplot2)
+library(lattice)
+library(caret)
+train_control_smote <- trainControl(method = "cv", number = 5, sampling = "smote", classProbs = TRUE)
 
+#3.2 Random Oversampling
 
-# 3.2 oversampling 
-rec_scaled_balanced <- base_recipe(train_data) %>%
-  step_center(all_numeric_predictors()) %>%
-  step_scale(all_numeric_predictors()) %>%
-  step_upsample(y) %>%
-  prep(training = train_data, retain = TRUE)
+library(ROSE)
 
+# Show the imbalance in the initial dataset
+cat("Initial Class Distribution in Training Data:\n")
+table(train_data$y)  # Show class distribution
 
-train_scaled_balanced <- juice(rec_scaled_balanced)
-test_scaled_balanced  <- bake(rec_scaled_balanced, new_data = test_data)
+# Plot the class distribution before balancing
+barplot(table(train_data$y),
+        main = "BEFORE Random OverSampling: Very Imbalanced!",
+        col = c("green", "red"),
+        ylab = "Number of Transactions")
 
-# 3.3 undersampling 
-rec_scaled_downsample <- base_recipe(train_data) %>%
-  step_center(all_numeric_predictors()) %>%
-  step_scale(all_numeric_predictors()) %>%
-  step_downsample(y) %>%
-  prep(training = train_data, retain = TRUE)
+# Apply random oversampling using ROSE
+oversampled_data <- ovun.sample(y ~ ., data = train_data, method = "over", N = max(table(train_data$y)) * 2)$data
 
-train_scaled_downsample <- juice(rec_scaled_downsample)
-test_scaled_downsample  <- bake(rec_scaled_downsample, new_data = test_data)
+# Show the class distribution after oversampling
+cat("Class Distribution After Oversampling:\n")
+table(oversampled_data$y)  # Show class distribution
+
+# Plot the class distribution after oversampling
+barplot(table(oversampled_data$y),
+        main = "After Random OverSampling: Balanced!",
+        col = c("green", "red"),
+        ylab = "Number of Transactions")
+table(oversampled_data$y)
+
+#Stratified Cross-Validation
+library(ggplot2)
+library(lattice)
+library(caret)
+train_control_oversampling <- trainControl(method = "cv", number = 5, sampling = "over", classProbs = TRUE)
+
+#3.3 Undersampling
+
+# Load necessary libraries
+library(caret)  # For downsampling
+library(ggplot2)  # For visualization
+library(randomForest)  # For model fitting
+
+# Step 1: Show the imbalance in the initial dataset
+cat("Initial Class Distribution in Training Data:\n")
+print(table(train_data$y))  # Show class distribution
+
+# Plot the class distribution before balancing
+barplot(table(train_data$y),
+        main = "BEFORE Random Undersampling: Very Imbalanced!",
+        col = c("green", "red"),
+        ylab = "Number of Transactions")
+
+# Step 2: Apply random undersampling on Class 2 (Majority class) to match the size of Class 1
+# Class 1 has 3723 instances, so reduce Class 2 to 3723 instances
+class_1 <- train_data[train_data$y == 1, ]  # Subset for Class 1 (minority class)
+class_2 <- train_data[train_data$y == 2, ]  # Subset for Class 2 (majority class)
+
+# Randomly sample 3723 instances from Class 2 (to match Class 1)
+set.seed(123)  # For reproducibility
+class_2_undersampled <- class_2[sample(1:nrow(class_2), size = 3723), ]
+
+# Combine the undersampled Class 2 with Class 1
+undersampled_data <- rbind(class_1, class_2_undersampled)
+
+# Step 3: Show the class distribution after undersampling
+cat("Class Distribution After Undersampling:\n")
+print(table(undersampled_data$y))  # Show class distribution
+
+# Plot the class distribution after undersampling
+barplot(table(undersampled_data$y),
+        main = "After Random Undersampling: Balanced!",
+        col = c("green", "red"),
+        ylab = "Number of Transactions")
+
+#Stratified Cross-Validation
+library(ggplot2)
+library(lattice)
+library(caret)
+train_control_undersampling <- trainControl(method = "cv", number = 5, sampling = "under", classProbs = TRUE)
 
 #3.4 Cost-sensitive sampling
 
@@ -707,8 +801,16 @@ print(prop.table(table(test_cost_sensitive$y)))
 # -----------------------------------------------------------------------------------------------------
 
 # -----------------------------------------------------------------------------------------------------
-#  STEP 1: 
+#  Model 1:Logistic Regression Model
 # -----------------------------------------------------------------------------------------------------
 
+cat("--- Training Logistic Regression Model ---\n\n")
 
+# Train a Logistic Regression model
+# The formula 'y ~ .' means predict 'y' using all other variables in the dataframe
+# The family = binomial() specifies logistic regression for a binary outcome
+logistic_model <- glm(y ~ ., data = train_data, family = binomial())
 
+# Print the summary of the logistic regression model
+cat("Logistic Regression Model Summary:\n")
+summary(logistic_model)
